@@ -28,7 +28,6 @@ def prev_weekday(adate):
     return adate
 
 current_date = datetime.today()
-
 yesterday_date = prev_weekday(current_date)
 day_before_yesterday_date = prev_weekday(yesterday_date)
 yesterday_date = yesterday_date.strftime('%Y-%m-%d')
@@ -45,11 +44,24 @@ def is_change_greater_than_perc(final_value, initial_value, percentage=0.01):
         return True
     return False
 
-res = is_change_greater_than_perc(yesterday_close, day_before_yesterday_close)
-print(res)
-
 ## STEP 2: Use https://newsapi.org
 # Instead of printing ("Get News"), actually get the first 3 news pieces for the COMPANY_NAME. 
+
+if is_change_greater_than_perc(yesterday_close, day_before_yesterday_close):
+
+    params = {"q":'Tesla',
+            "from": yesterday_date,
+            "sortBy": 'popularity', 
+            "apiKey": config.NEWS_API_KEY}
+
+    url = 'https://newsapi.org/v2/everything?'
+
+    r = requests.get(url, params=params)
+    data = r.json()
+    
+    top_three_articles = data["articles"][:3]
+
+
 
 ## STEP 3: Use https://www.twilio.com
 # Send a seperate message with the percentage change and each article's title and description to your phone number. 
