@@ -47,7 +47,7 @@ perc_change_res = get_perc_change(yesterday_close, day_before_yesterday_close)
 
 
 # fetching and sending news data
-if perc_change_res > 0.01 or perc_change_res < -0.01:
+if perc_change_res > 0.05 or perc_change_res < -0.05:
     params = {"q": COMPANY_NAME,
               "from": yesterday_date,
               "sortBy": 'popularity',
@@ -68,3 +68,4 @@ if perc_change_res > 0.01 or perc_change_res < -0.01:
             body=f"{STOCK} daily change: {round(perc_change_res*100, 2)}%\nHeadline: {selected_article['title']}\nBrief: {selected_article['description']}",
             from_=config.twilio_phone_num,
             to=config.my_phone_num)
+        print(message.status)
