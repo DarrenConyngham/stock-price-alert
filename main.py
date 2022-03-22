@@ -1,31 +1,30 @@
 import config
 import requests
 from datetime import datetime, timedelta
-
+from twilio.rest import Client
+from twilio.http.http_client import TwilioHttpClient
 
 STOCK = "TSLA"
 COMPANY_NAME = "Tesla Inc"
 
-## STEP 1: Use https://www.alphavantage.co
-# When STOCK price increase/decreases by 5% between yesterday and the day before yesterday then print("Get News").
-
-### getting the data
+# getting the data
 params = {'function': 'TIME_SERIES_DAILY',
-            'symbol': STOCK,
-            'outputsize': 'compact',
-            'apikey': config.ALPHA_VANTAGE_API_KEY}
+          'symbol': STOCK,
+          'outputsize': 'compact',
+          'apikey': config.ALPHA_VANTAGE_API_KEY}
 
 url = 'https://www.alphavantage.co/query?'
 r = requests.get(url, params=params)
 data = r.json()
 
 
-### processing the data
+# processing the data
 def prev_weekday(adate):
     adate -= timedelta(days=1)
-    while adate.weekday() > 4: # Mon-Fri are 0-4
+    while adate.weekday() > 4:  # Mon-Fri are 0-4
         adate -= timedelta(days=1)
     return adate
+
 
 current_date = datetime.today()
 yesterday_date = prev_weekday(current_date)
@@ -33,48 +32,39 @@ day_before_yesterday_date = prev_weekday(yesterday_date)
 yesterday_date = yesterday_date.strftime('%Y-%m-%d')
 day_before_yesterday_date = day_before_yesterday_date.strftime('%Y-%m-%d')
 
-yesterday_close = float(data["Time Series (Daily)"][yesterday_date]['4. close'])
-day_before_yesterday_close = float(data["Time Series (Daily)"][day_before_yesterday_date]['4. close'])
+yesterday_close = float(data["Time Series (Daily)"]
+                        [yesterday_date]['4. close'])
+day_before_yesterday_close = float(
+    data["Time Series (Daily)"][day_before_yesterday_date]['4. close'])
 
-def is_change_greater_than_perc(final_value, initial_value, percentage=0.01):
-    perc_change = abs((final_value - initial_value) / initial_value)
-    print(f"The initial close was: {initial_value}. The final close was: {final_value}. The absolute perc change was: {perc_change}")
-    if perc_change > percentage:
-        print("Get News")
-        return True
-    return False
 
-## STEP 2: Use https://newsapi.org
-# Instead of printing ("Get News"), actually get the first 3 news pieces for the COMPANY_NAME. 
+def get_perc_change(final_value, initial_value):
+    perc_change = (final_value - initial_value) / initial_value
+    return perc_change
 
-if is_change_greater_than_perc(yesterday_close, day_before_yesterday_close):
 
-    params = {"q":'Tesla',
-            "from": yesterday_date,
-            "sortBy": 'popularity', 
-            "apiKey": config.NEWS_API_KEY}
+perc_change_res = get_perc_change(yesterday_close, day_before_yesterday_close)
+
+
+# fetching and sending news data
+if perc_change_res > 0.01 or perc_change_res < -0.01:
+    params = {"q": COMPANY_NAME,
+              "from": yesterday_date,
+              "sortBy": 'popularity',
+              "apiKey": config.NEWS_API_KEY}
 
     url = 'https://newsapi.org/v2/everything?'
 
     r = requests.get(url, params=params)
     data = r.json()
-    
+
     top_three_articles = data["articles"][:3]
 
-
-
-## STEP 3: Use https://www.twilio.com
-# Send a seperate message with the percentage change and each article's title and description to your phone number. 
-
-
-#Optional: Format the SMS message like this: 
-"""
-TSLA: 🔺2%
-Headline: Were Hedge Funds Right About Piling Into Tesla Inc. (TSLA)?. 
-Brief: We at Insider Monkey have gone over 821 13F filings that hedge funds and prominent investors are required to file by the SEC The 13F filings show the funds' and investors' portfolio positions as of March 31st, near the height of the coronavirus market crash.
-or
-"TSLA: 🔻5%
-Headline: Were Hedge Funds Right About Piling Into Tesla Inc. (TSLA)?. 
-Brief: We at Insider Monkey have gone over 821 13F filings that hedge funds and prominent investors are required to file by the SEC The 13F filings show the funds' and investors' portfolio positions as of March 31st, near the height of the coronavirus market crash.
-"""
-
+    for i in range(3):
+        selected_article = top_three_articles[i]
+        print("Fetched article")
+        client = Client(config.twilio_account_sid, config.twilio_auth_token)
+        message = client.messages.create(
+            body=f"{STOCK} daily change: {round(perc_change_res*100, 2)}%\nHeadline: {selected_article['title']}\nBrief: {selected_article['description']}",
+            from_=config.twilio_phone_num,
+            to=config.my_phone_num)
