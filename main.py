@@ -39,6 +39,15 @@ day_before_yesterday_close = float(
 
 
 def get_perc_change(final_value, initial_value):
+    """Calculates the percentage change between two values.
+
+    Args:
+        final_value (float): the later value you wish to input.
+        initial_value (float): the earlier value you wish to input.
+
+    Returns:
+        float: the percentage change in the decimal format (e.g. 0.04 and not 4%)
+    """    
     perc_change = (final_value - initial_value) / initial_value
     return perc_change
 
@@ -47,8 +56,9 @@ perc_change_res = get_perc_change(yesterday_close, day_before_yesterday_close)
 
 
 # fetching and sending news data
-if perc_change_res > 0.05 or perc_change_res < -0.05:
+if abs(perc_change_res) > 0.05:
     params = {"q": COMPANY_NAME,
+              "searchIn": "title,description",
               "from": yesterday_date,
               "sortBy": 'popularity',
               "apiKey": config.NEWS_API_KEY}
